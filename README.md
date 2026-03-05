@@ -104,16 +104,22 @@ Use `jenkins_url` to open Jenkins in browser.
 
 In Jenkins, create credentials:
 
-1. `dockerhub` (Username/Password)
-- Username: Docker Hub username
-- Password: Docker Hub token/password
+1. `DOCKERHUB_USERNAME` (Secret text)
+- Value: your Docker Hub username
 
-2. `aws-creds` (Username/Password)
-- Username: AWS_ACCESS_KEY_ID
-- Password: AWS_SECRET_ACCESS_KEY
+2. `DOCKERHUB_TOKEN` (Secret text)
+- Value: your Docker Hub access token/password
+
+3. `AWS_ACCESS_KEY_ID` (Secret text)
+- Value: your AWS access key ID
+
+4. `AWS_SECRET_ACCESS_KEY` (Secret text)
+- Value: your AWS secret access key
 
 Important:
-- The AWS identity in `aws-creds` must have EKS access for cluster operations.
+- GitHub Secrets are not automatically visible to Jenkins jobs.
+- Keep the same values in Jenkins Credentials (IDs above) so the `Jenkinsfile` can read them.
+- The AWS identity in `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` must have EKS access for cluster operations.
 - If deployment fails with authorization errors, grant this identity cluster admin access in EKS.
 
 ### 5. Create Jenkins Pipeline job
@@ -156,7 +162,7 @@ When LoadBalancer hostname appears, open it in browser.
 - Fix: grant the Jenkins AWS identity proper access to the EKS cluster.
 
 2. Docker push fails
-- Cause: wrong `dockerhub` credentials.
+- Cause: wrong Docker Hub credentials (`DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`).
 - Fix: recreate credential with valid Docker Hub token.
 
 3. Jenkins cannot start pipeline tools
