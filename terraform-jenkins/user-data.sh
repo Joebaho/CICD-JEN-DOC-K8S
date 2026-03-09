@@ -1,59 +1,108 @@
 #!/bin/bash
-set -euxo pipefail
 
-export DEBIAN_FRONTEND=noninteractive
+set -e
 
-apt-get update -y
-apt-get install -y ca-certificates curl gnupg lsb-release unzip git wget apt-transport-https software-properties-common
+echo "==========Updating system...=========="
+apt update -y
+apt upgrade -y
 
-# Install Docker
-apt-get install -y docker.io
-systemctl enable --now docker
+echo "==========Installing base packages...=========="
+apt install -y curl wget git unzip zip ca-certificates gnupg lsb-release
+
+echo "==========Installing Java...=========="
+apt install -y openjdk-21-jdk
+
+echo "==========Installing Jenkins...=========="
+
+curl -fsSL https://pkg.jenkins.io/debian/jenkins.io-2026.key \
+| tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian binary/" \
+| tee /etc/apt/sources.list.d/jenkins.list
+
+apt update -y
+apt install -y jenkins
+
+systemctl enable jenkins
+systemctl start jenkins
+
+echo "==========Installing Docker...=========="
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+| gpg --dearmor -o /usr/share/keyrings/docker.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+| tee /etc/apt/sources.list.d/docker.list
+
+apt update -y
+apt install -y docker-ce docker-ce-cli containerd.io
+
+systemctl enable docker
+systemctl start docker
+groupadd -f docker
 usermod -aG docker ubuntu || true
-
-# Install AWS CLI v2
-curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-unzip -q /tmp/awscliv2.zip -d /tmp
-/tmp/aws/install
-rm -rf /tmp/aws /tmp/awscliv2.zip
-
-# Install kubectl
-curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
-chmod +x /usr/local/bin/kubectl
-
-# Install Jenkins (LTS) + Java runtime
-mkdir -p /usr/share/keyrings
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
-apt-get update -y
-if apt-cache show openjdk-21-jre >/dev/null 2>&1; then
-  apt-get install -y fontconfig openjdk-21-jre jenkins
-else
-  echo "openjdk-21-jre not available on this image, falling back to openjdk-17-jre"
-  apt-get install -y fontconfig openjdk-17-jre jenkins
-fi
-
-# Disable setup wizard for automated bootstrap
-mkdir -p /etc/systemd/system/jenkins.service.d
-cat >/etc/systemd/system/jenkins.service.d/override.conf <<EOT
-[Service]
-Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
-EOT
-
-systemctl daemon-reload
-systemctl enable --now jenkins
-
-# Install required Jenkins plugins
-jenkins-plugin-cli --plugins \
-  git \
-  workflow-aggregator \
-  docker-workflow \
-  credentials-binding \
-  pipeline-aws
-
-systemctl restart jenkins
-
-# Add jenkins user to docker group after installation
 usermod -aG docker jenkins || true
-systemctl restart docker
-systemctl restart jenkins
+
+echo "==========Installing kubectl...=========="
+
+curl -LO https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl
+chmod +x kubectl
+mv kubectl /usr/local/bin/
+
+echo "==========Installing eksctl...=========="
+
+curl -sLO https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
+tar -xzf eksctl_Linux_amd64.tar.gz
+mv eksctl /usr/local/bin
+rm eksctl_Linux_amd64.tar.gz
+
+echo "==========Installing Terraform...=========="
+
+curl -fsSL https://apt.releases.hashicorp.com/gpg \
+| gpg --dearmor -o /usr/share/keyrings/hashicorp.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/hashicorp.gpg] \
+https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+| tee /etc/apt/sources.list.d/hashicorp.list
+
+apt update -y
+apt install -y terraform
+
+echo "========== VERIFY INSTALLATIONS =========="
+
+echo "Jenkins:"
+systemctl status jenkins --no-pager
+
+echo "Docker:"
+docker --version
+
+echo "Kubectl:"
+kubectl version --client
+
+echo "Kops:"
+kops version
+
+echo "AWS CLI:"
+aws --version
+
+echo "Terraform:"
+terraform -version
+
+echo "Eksctl:"
+eksctl version
+
+echo "Trivy:"
+trivy --version
+
+echo "========== INSTALLATION COMPLETE =========="
+
+PUBLIC_IP=$(curl -s checkip.amazonaws.com)
+
+echo "Access Jenkins at:"
+echo "http://$PUBLIC_IP:8080"
+
+echo "Jenkins initial password:"
+cat /var/lib/jenkins/secrets/initialAdminPassword
+
+
