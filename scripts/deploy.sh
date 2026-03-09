@@ -86,4 +86,4 @@ echo "Jenkins outputs:"
 terraform -chdir="$JENKINS_DIR" output || true
 
 echo ""
-echo "Next: open Jenkins URL from output and configure credentials: dockerhub, aws-creds"
+echo "Next: open Jenkins URL from output and configure credentials: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"

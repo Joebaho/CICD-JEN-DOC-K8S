@@ -1,6 +1,10 @@
 #!/bin/bash
 
-set -e
+set -euxo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+# Persist cloud-init output for troubleshooting.
+exec > >(tee /var/log/jenkins-user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 
 echo "==========Updating system...=========="
 apt update -y
@@ -69,6 +73,9 @@ https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
 apt update -y
 apt install -y terraform
 
+echo "==========Installing AWS CLI...=========="
+apt install -y awscli
+
 echo "========== VERIFY INSTALLATIONS =========="
 
 echo "Jenkins:"
@@ -80,9 +87,6 @@ docker --version
 echo "Kubectl:"
 kubectl version --client
 
-echo "Kops:"
-kops version
-
 echo "AWS CLI:"
 aws --version
 
@@ -91,9 +95,6 @@ terraform -version
 
 echo "Eksctl:"
 eksctl version
-
-echo "Trivy:"
-trivy --version
 
 echo "========== INSTALLATION COMPLETE =========="
 
@@ -104,5 +105,4 @@ echo "http://$PUBLIC_IP:8080"
 
 echo "Jenkins initial password:"
 cat /var/lib/jenkins/secrets/initialAdminPassword
-
 

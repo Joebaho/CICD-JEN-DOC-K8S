@@ -37,6 +37,11 @@ resource "aws_iam_role_policy_attachment" "jenkins_vpc_full" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonVPCFullAccess"
 }
 
+resource "aws_iam_role_policy_attachment" "jenkins_ssm_core" {
+  role       = aws_iam_role.jenkins_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # Instance profile
 resource "aws_iam_instance_profile" "jenkins_profile" {
   name = "jenkins-eks-profile"
@@ -88,11 +93,13 @@ data "aws_ami" "ubuntu" {
 
 # EC2 instance
 resource "aws_instance" "jenkins" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  vpc_security_group_ids = [aws_security_group.jenkins_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.jenkins_profile.name
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  key_name                    = var.key_name
+  vpc_security_group_ids      = [aws_security_group.jenkins_sg.id]
+  iam_instance_profile        = aws_iam_instance_profile.jenkins_profile.name
+  user_data                   = file("${path.module}/user-data.sh")
+  user_data_replace_on_change = true
 
   tags = {
     Name = "jenkins-server"

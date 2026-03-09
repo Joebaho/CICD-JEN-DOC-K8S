@@ -4,8 +4,10 @@ variable "aws_region" {
 }
 
 variable "key_name" {
-  description = "Name of an existing EC2 key pair"
+  description = "Name of an existing EC2 key pair (optional if using SSM only)"
   type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "instance_type" {
