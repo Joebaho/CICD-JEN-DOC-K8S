@@ -47,6 +47,10 @@ systemctl start docker
 groupadd -f docker
 usermod -aG docker ubuntu || true
 usermod -aG docker jenkins || true
+# Ensure Session Manager shell user can run Docker without sudo.
+# SSM may create this user lazily; create it here so group membership is ready.
+id -u ssm-user >/dev/null 2>&1 || useradd -m -s /bin/bash ssm-user
+usermod -aG docker ssm-user || true
 
 echo "==========Installing kubectl...=========="
 
@@ -105,4 +109,3 @@ echo "http://$PUBLIC_IP:8080"
 
 echo "Jenkins initial password:"
 cat /var/lib/jenkins/secrets/initialAdminPassword
-
